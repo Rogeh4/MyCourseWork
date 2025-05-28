@@ -1,7 +1,7 @@
 import pygame
 import sys
 import random
-import os
+
 
 # Цвета
 WHITE = (255, 255, 255)
@@ -13,6 +13,7 @@ BLACK = (0, 0, 0)
 WIDTH, HEIGHT = 600, 400
 BALL_RADIUS = 15  # Еще меньше мяч
 PAD_WIDTH, PAD_HEIGHT = 8, 60  # Еще короче ракетка
+PAD_DISTANCE = 0
 HALF_PAD_WIDTH = PAD_WIDTH // 2
 HALF_PAD_HEIGHT = PAD_HEIGHT // 2
 
@@ -22,22 +23,22 @@ class PongGame:
         pygame.init()
         self.fps = pygame.time.Clock()
         self.window = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption('Pong RL')
+        pygame.display.set_caption('Pong RL made not by me')
 
         # Сложности
         self.difficulty_levels = {
-            "easy": {"ball_speed": (2, 3), "paddle_speed": 5, "acceleration": 1.05},
+            "easy": {"ball_speed": (4, 5), "paddle_speed": 5, "acceleration": 1.05},
             "medium": {"ball_speed": (3, 4), "paddle_speed": 7, "acceleration": 1.1},
             "hard": {"ball_speed": (4, 5), "paddle_speed": 9, "acceleration": 1.2}
         }
-        self.current_difficulty = "easy"
+        self.current_difficulty = "hard"
         self.difficulty = self.difficulty_levels[self.current_difficulty]
 
         self.reset()
 
     def reset(self):
-        self.paddle1_pos = [HALF_PAD_WIDTH, HEIGHT // 2]  # Всегда стартуем из центра
-        self.paddle2_pos = [WIDTH - HALF_PAD_WIDTH, HEIGHT // 2]
+        self.paddle1_pos = [HALF_PAD_WIDTH + PAD_DISTANCE, HEIGHT // 2]  # Всегда стартуем из центра
+        self.paddle2_pos = [WIDTH - HALF_PAD_WIDTH - PAD_DISTANCE, HEIGHT // 2]
         self.ball_pos = [WIDTH // 2, HEIGHT // 2]
         self.ball_vel = [0, 0]
         self.l_score = 0
@@ -94,14 +95,20 @@ class PongGame:
         self.ball_pos[0] += self.ball_vel[0]
         self.ball_pos[1] += self.ball_vel[1]
 
-        # Коллизии мяча
-        if self.ball_pos[1] <= BALL_RADIUS or self.ball_pos[1] >= HEIGHT - BALL_RADIUS:
-            self.ball_vel[1] *= -1
+        # Коллизии мяча по y
+        if  self.ball_pos[1] >= HEIGHT - BALL_RADIUS:
+            self.ball_vel[1] *= -0.9
+            self.ball_pos[1] = HEIGHT - BALL_RADIUS
+        # редакция коллизий по y
+        if self.ball_pos[1] <= BALL_RADIUS:
+            self.ball_vel[1] *= -0.9
+            self.ball_pos[1] = BALL_RADIUS
 
         # Проверка отбития левой ракеткой
         if (self.ball_pos[0] <= PAD_WIDTH + BALL_RADIUS and
                 self.paddle1_pos[1] - HALF_PAD_HEIGHT <= self.ball_pos[1] <= self.paddle1_pos[1] + HALF_PAD_HEIGHT):
             self.ball_vel[0] *= -self.difficulty["acceleration"]
+            self.ball_vel[1] = self.paddle1_vel
             self.hit_paddle1 = True
         elif self.ball_pos[0] <= 0:
             self.r_score += 1
@@ -112,6 +119,7 @@ class PongGame:
         if (self.ball_pos[0] >= WIDTH - PAD_WIDTH - BALL_RADIUS and
                 self.paddle2_pos[1] - HALF_PAD_HEIGHT <= self.ball_pos[1] <= self.paddle2_pos[1] + HALF_PAD_HEIGHT):
             self.ball_vel[0] *= -self.difficulty["acceleration"]
+            self.ball_vel[1] = self.paddle2_vel
         elif self.ball_pos[0] >= WIDTH:
             self.l_score += 1
             self.ball_init(False)
@@ -147,7 +155,7 @@ class PongGame:
         pygame.draw.rect(self.window, GREEN,
                          (self.paddle2_pos[0] - HALF_PAD_WIDTH, self.paddle2_pos[1] - HALF_PAD_HEIGHT, PAD_WIDTH,
                           PAD_HEIGHT))
-        pygame.draw.circle(self.window, RED, (int(self.ball_pos[0]), int(self.ball_pos[1])), BALL_RADIUS)
+        pygame.draw.circle(self.window, [100, 0, 100], (int(self.ball_pos[0]), int(self.ball_pos[1])), BALL_RADIUS)
 
         font = pygame.font.SysFont("Comic Sans MS", 20)
         self.window.blit(font.render(f"Score {self.l_score}", True, (255, 255, 0)), (50, 20))
@@ -204,8 +212,13 @@ class PongGame:
         # Сохраняем позицию мяча для следующего шага
         self.last_ball_pos = self.ball_pos.copy()
 
-        # Проверка завершения эпизода
-        done = self.l_score >= 5 or self.r_score >= 5
+        # Проверка завершения эпизода с счетом
+        if self.l_score >= 5:
+            done = 'Left'
+        elif self.r_score >= 5:
+            done = 'Right'
+        else:
+            done = 0
 
         return self.get_state(), reward, done
 
