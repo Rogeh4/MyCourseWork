@@ -1,7 +1,7 @@
 import pygame
 import sys
 import random
-
+from collections import namedtuple
 
 # Цвета
 WHITE = (255, 255, 255)
@@ -33,6 +33,7 @@ class PongGame:
         }
         self.current_difficulty = "hard"
         self.difficulty = self.difficulty_levels[self.current_difficulty]
+        self.stepRes = StepResult = namedtuple('StepResult', ['state', 'reward', 'done', "ball_speed"])
 
         self.reset()
 
@@ -212,7 +213,7 @@ class PongGame:
         # Сохраняем позицию мяча для следующего шага
         self.last_ball_pos = self.ball_pos.copy()
 
-        # Проверка завершения эпизода с счетом
+        # Проверка завершения эпизода со счетом
         if self.l_score >= 5:
             done = 'Left'
         elif self.r_score >= 5:
@@ -220,7 +221,8 @@ class PongGame:
         else:
             done = 0
 
-        return self.get_state(), reward, done
+        ball_speed = abs(self.ball_vel[0])+abs(self.ball_vel[1])
+        return self.stepRes(state=self.get_state(), reward=reward, done=done, ball_speed=ball_speed)
 
     def discretize_state(self, state, bins=(12, 12, 10, 10, 30)):
         bounds = [
